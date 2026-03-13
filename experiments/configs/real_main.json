@@ -1,0 +1,8 @@
+{
+  "name": "real_main",
+  "kind": "real",
+  "seeds": [7, 11, 13, 17, 19],
+  "transaction_cost": 0.0015,
+  "top_k": 10
+}
+

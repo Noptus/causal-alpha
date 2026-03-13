@@ -1,0 +1,8 @@
+{
+  "name": "synthetic_main",
+  "kind": "synthetic",
+  "seeds": [7, 11, 13, 17, 19],
+  "transaction_cost": 0.001,
+  "top_k": 5
+}
+

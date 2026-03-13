@@ -1,0 +1,21 @@
+{
+  "name": "paper_bundle",
+  "kind": "paper_bundle",
+  "synthetic": {
+    "seeds": [7, 11, 13, 17, 19],
+    "top_k": 5,
+    "max_weight": 0.2,
+    "transaction_cost": 0.001
+  },
+  "real": {
+    "seeds": [7, 11, 13, 17, 19],
+    "top_k": 10,
+    "max_weight": 0.2,
+    "transaction_cost": 0.0015,
+    "min_available": 120,
+    "train_months": 180,
+    "val_months": 60,
+    "test_months": 60,
+    "step_months": 60
+  }
+}

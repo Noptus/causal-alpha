@@ -248,7 +248,7 @@ def run_fold(
 
     def _causal_overrides(method_name: str) -> dict[str, Any]:
         overrides = dict(method_overrides.get(method_name, {}))
-        for grid_name in ["blend_grid", "instability_grid", "persistence_grid"]:
+        for grid_name in ["blend_grid", "instability_grid", "persistence_grid", "invariant_weight_grid"]:
             if grid_name in overrides:
                 overrides[grid_name] = tuple(float(value) for value in overrides[grid_name])
         return overrides

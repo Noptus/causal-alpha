@@ -242,17 +242,22 @@ class CausalPolicyNetwork:
     blend_grid: tuple[float, ...] = (0.0, 0.25, 0.5, 0.75, 1.0)
     instability_grid: tuple[float, ...] = (0.0, 0.1, 0.2, 0.3, 0.4)
     persistence_grid: tuple[float, ...] = (0.0, 0.05, 0.1, 0.15)
+    invariant_weight_grid: tuple[float, ...] = (0.0, 0.05, 0.1)
     validation_cum_weight: float = 0.15
     validation_turnover_weight: float = 0.10
     validation_worst_regime_weight: float = 0.10
     regime_sample_floor: float = 0.20
     refit_on_train_val: bool = False
     compare_legacy: bool = True
+    invariant_strength: float = 0.50
+    invariant_sign_penalty: float = 0.25
     base_model_: _RidgeScoreModel = field(init=False)
     regime_models_: list[_RidgeScoreModel] = field(init=False)
+    invariant_prior_: np.ndarray = field(init=False)
     selected_blend_: float = field(init=False, default=0.0)
     selected_instability_: float = field(init=False, default=0.0)
     selected_persistence_: float = field(init=False, default=0.0)
+    selected_invariant_weight_: float = field(init=False, default=0.0)
     fit_summary_: dict[str, float] = field(init=False, default_factory=dict)
     legacy_candidate_: LegacyCausalPolicyNetwork | None = field(init=False, default=None)
     active_strategy_: str = field(init=False, default="hybrid")
@@ -283,6 +288,11 @@ class CausalPolicyNetwork:
             available=train_available,
             regime_posteriors=train_regime_posteriors,
         )
+        self.invariant_prior_ = self._compute_invariant_prior(
+            future_returns=train_returns,
+            available=train_available,
+            regime_posteriors=train_regime_posteriors,
+        )
         base_scores, regime_mix_scores, instability_scores = self._path_components(
             features=val_features,
             regime_posteriors=val_regime_posteriors,
@@ -292,28 +302,31 @@ class CausalPolicyNetwork:
         for blend in self.blend_grid:
             for instability in self.instability_grid:
                 for persistence in self.persistence_grid:
-                    metrics = self._simulate_path(
-                        future_returns=val_returns,
-                        available=val_available,
-                        base_scores=base_scores,
-                        regime_mix_scores=regime_mix_scores,
-                        instability_scores=instability_scores,
-                        regime_labels=val_regime_labels,
-                        blend=blend,
-                        instability_penalty=instability,
-                        persistence=persistence,
-                    )
-                    score = self._validation_score(metrics)
-                    if score > best_score + 1e-12 or (
-                        abs(score - best_score) <= 1e-12
-                        and best_metrics is not None
-                        and metrics["avg_turnover"] < best_metrics["avg_turnover"]
-                    ):
-                        best_score = score
-                        best_metrics = metrics
-                        self.selected_blend_ = blend
-                        self.selected_instability_ = instability
-                        self.selected_persistence_ = persistence
+                    for invariant_weight in self.invariant_weight_grid:
+                        metrics = self._simulate_path(
+                            future_returns=val_returns,
+                            available=val_available,
+                            base_scores=base_scores,
+                            regime_mix_scores=regime_mix_scores,
+                            instability_scores=instability_scores,
+                            regime_labels=val_regime_labels,
+                            blend=blend,
+                            instability_penalty=instability,
+                            persistence=persistence,
+                            invariant_weight=invariant_weight,
+                        )
+                        score = self._validation_score(metrics)
+                        if score > best_score + 1e-12 or (
+                            abs(score - best_score) <= 1e-12
+                            and best_metrics is not None
+                            and metrics["avg_turnover"] < best_metrics["avg_turnover"]
+                        ):
+                            best_score = score
+                            best_metrics = metrics
+                            self.selected_blend_ = blend
+                            self.selected_instability_ = instability
+                            self.selected_persistence_ = persistence
+                            self.selected_invariant_weight_ = invariant_weight
         hybrid_score = best_score
         hybrid_metrics = best_metrics
         legacy_score = -np.inf
@@ -359,6 +372,7 @@ class CausalPolicyNetwork:
                     "selected_blend": 0.0,
                     "selected_instability": 0.0,
                     "selected_persistence": float(legacy_candidate.persistence_scale),
+                    "selected_invariant_weight": 0.0,
                     "validation_score": float(legacy_score),
                     "validation_sharpe": float(legacy_metrics["sharpe"]),
                     "validation_cum_return": float(legacy_metrics["cum_return"]),
@@ -381,10 +395,16 @@ class CausalPolicyNetwork:
                 available=combined_available,
                 regime_posteriors=combined_posteriors,
             )
+            self.invariant_prior_ = self._compute_invariant_prior(
+                future_returns=combined_returns,
+                available=combined_available,
+                regime_posteriors=combined_posteriors,
+            )
         self.fit_summary_ = {
             "selected_blend": float(self.selected_blend_),
             "selected_instability": float(self.selected_instability_),
             "selected_persistence": float(self.selected_persistence_),
+            "selected_invariant_weight": float(self.selected_invariant_weight_),
             "validation_score": float(best_score),
             "validation_sharpe": float(0.0 if best_metrics is None else best_metrics["sharpe"]),
             "validation_cum_return": float(0.0 if best_metrics is None else best_metrics["cum_return"]),
@@ -430,6 +450,27 @@ class CausalPolicyNetwork:
             )
         return base_model, regime_models
 
+    def _compute_invariant_prior(
+        self,
+        *,
+        future_returns: np.ndarray,
+        available: np.ndarray,
+        regime_posteriors: np.ndarray,
+    ) -> np.ndarray:
+        regime_means: list[np.ndarray] = []
+        availability = available.astype(float)
+        for regime_id in range(regime_posteriors.shape[1]):
+            weights = regime_posteriors[:, regime_id][:, None] * availability
+            denom = np.maximum(weights.sum(axis=0), 1e-8)
+            regime_means.append((weights * future_returns).sum(axis=0) / denom)
+        stacked = np.stack(regime_means, axis=0)
+        base = stacked.mean(axis=0)
+        instability = stacked.std(axis=0)
+        sign_penalty = (np.ptp(np.sign(stacked + 1e-12), axis=0) > 0).astype(float)
+        prior = base - self.invariant_strength * instability - self.invariant_sign_penalty * sign_penalty * instability
+        prior = (prior - prior.mean()) / max(prior.std(ddof=0), 1e-8)
+        return prior
+
     def _path_components(
         self,
         *,
@@ -464,6 +505,7 @@ class CausalPolicyNetwork:
         blend: float,
         instability_penalty: float,
         persistence: float,
+        invariant_weight: float,
     ) -> dict[str, float]:
         prev_weights = np.zeros(base_scores.shape[1], dtype=float)
         weight_path = np.zeros_like(base_scores)
@@ -473,6 +515,7 @@ class CausalPolicyNetwork:
                 + blend * (regime_mix_scores[idx] - base_scores[idx])
                 - instability_penalty * instability_scores[idx]
                 + persistence * prev_weights
+                + invariant_weight * self.invariant_prior_
             )
             current_weights = weights_from_scores(
                 scores,
@@ -560,6 +603,7 @@ class CausalPolicyNetwork:
             + self.selected_blend_ * (regime_mix_scores - base_scores)
             - self.selected_instability_ * instability_scores
             + self.selected_persistence_ * prev_weights
+            + self.selected_invariant_weight_ * self.invariant_prior_
         )
         return weights_from_scores(scores, available, top_k=self.top_k, max_weight=self.max_weight)
 

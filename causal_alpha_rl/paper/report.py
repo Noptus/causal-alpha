@@ -171,6 +171,7 @@ def write_experiment_journal(
             "selected_blend",
             "selected_instability",
             "selected_persistence",
+            "selected_invariant_weight",
             "validation_score",
             "validation_sharpe",
             "validation_cum_return",

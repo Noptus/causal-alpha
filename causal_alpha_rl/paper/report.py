@@ -53,7 +53,7 @@ def write_results_report(
             "# Causal RL for Robust Alpha Discovery",
             "",
             "## Claim",
-            "Causal regime-aware policy learning improves robustness under regime shifts on the synthetic SCM benchmark and delivers a competitive stress-regime trade-off on the real factor-library benchmark.",
+            "Causal regime-aware policy learning is strongest on the synthetic SCM benchmark, where it recovers invariant factors and nearly matches the oracle Sharpe. On the real factor-library benchmark, the causal policy improves stress-regime Sharpe versus the standard policy learner, but the simple correlation ranking baseline remains the strongest overall performer.",
             "",
             "## Synthetic Performance",
             _markdown_table(synthetic_table),
@@ -73,6 +73,7 @@ def write_results_report(
             "",
             "## Notes",
             *[f"- {note}" for note in notes],
+            "- The real benchmark should be interpreted as external validity with mixed evidence, not as definitive dominance over simpler factor-ranking methods.",
             "",
         ]
     )

@@ -1,0 +1,9 @@
+method,precision_at_5,fdr_at_10,rank_corr,fold
+correlation_rank,0.0,1.0,-0.15877683720748895,0
+elastic_net,0.4,0.5,0.4914495764937206,0
+contextual_bandit,0.4,0.4,0.5338704153399273,0
+standard_rl,0.4,0.5,0.4792025750525173,0
+causal_rl_legacy,1.0,0.4,0.6196773353931867,0
+causal_rl,1.0,0.4,0.6015930993855523,0
+causal_rl_no_instability,1.0,0.4,0.6015930993855523,0
+oracle_regime,0.4,0.6,0.23294329522281682,0

@@ -1,0 +1,44 @@
+{
+  "fred": {
+    "BAA": {
+      "path": "/Users/raphaelcaillon/Documents/GitHub/causal-alpha/data/raw/fred/BAA.csv",
+      "sha256": "480dca96be6059ad54936a7a021575b522eb543bc323054e7cf1c6741c521019",
+      "source": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAA"
+    },
+    "CPIAUCSL": {
+      "path": "/Users/raphaelcaillon/Documents/GitHub/causal-alpha/data/raw/fred/CPIAUCSL.csv",
+      "sha256": "4494d9e15555069f0721bf5d18062bd7f88b70e3736ac5da2d5fcaf9ac64cd40",
+      "source": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL"
+    },
+    "FEDFUNDS": {
+      "path": "/Users/raphaelcaillon/Documents/GitHub/causal-alpha/data/raw/fred/FEDFUNDS.csv",
+      "sha256": "4d1d582443bf254419edb0478f2908814f9e465c703b4e410f278e43855d358d",
+      "source": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=FEDFUNDS"
+    },
+    "GS10": {
+      "path": "/Users/raphaelcaillon/Documents/GitHub/causal-alpha/data/raw/fred/GS10.csv",
+      "sha256": "464b93c2124712af9c7dd90a1be66bbcb676ef4f94f3bf5b14052c9c07eaad04",
+      "source": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=GS10"
+    },
+    "TB3MS": {
+      "path": "/Users/raphaelcaillon/Documents/GitHub/causal-alpha/data/raw/fred/TB3MS.csv",
+      "sha256": "9eea41f30f4059e77a5a21e762536d4f1b2f1e99cc0d58d8b5fdff211f66e8f3",
+      "source": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=TB3MS"
+    },
+    "UNRATE": {
+      "path": "/Users/raphaelcaillon/Documents/GitHub/causal-alpha/data/raw/fred/UNRATE.csv",
+      "sha256": "23b7c1f767dcfed9b8015ea1a1e93fb53f069e3d80397569c9af49c232887821",
+      "source": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=UNRATE"
+    }
+  },
+  "ken_french": {
+    "path": "/Users/raphaelcaillon/Documents/GitHub/causal-alpha/data/raw/ken_french/F-F_Research_Data_Factors_CSV.zip",
+    "sha256": "25092ff39d97789456726124aabd4888c3bcd22055fed814c9f425c25ee48105",
+    "source": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip"
+  },
+  "open_asset_pricing": {
+    "path": "/Users/raphaelcaillon/Documents/GitHub/causal-alpha/data/raw/open_asset_pricing_212_predictors.csv",
+    "sha256": "79aa0896d79924e1efa83f9afe51a3b4ce94137adfd2c5c3fd2d5d350532ee18",
+    "source": "https://drive.google.com/uc?export=download&id=10sOryk_ddjkXagaajTKUk1nwJs2ZLRiI"
+  }
+}

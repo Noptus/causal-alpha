@@ -1,0 +1,75 @@
+{
+  "name": "paper_bundle",
+  "kind": "paper_bundle",
+  "synthetic": {
+    "seeds": [7, 11, 13, 17, 19],
+    "top_k": 5,
+    "max_weight": 0.2,
+    "transaction_cost": 0.001,
+    "method_overrides": {
+      "causal_rl": {
+        "blend_grid": [0.0, 0.25, 0.5, 0.75, 1.0],
+        "instability_grid": [0.0, 0.1, 0.2, 0.3, 0.4],
+        "persistence_grid": [0.0, 0.05, 0.1, 0.15],
+        "validation_cum_weight": 0.15,
+        "validation_turnover_weight": 0.1,
+        "validation_worst_regime_weight": 0.15,
+        "regime_sample_floor": 0.2,
+        "refit_on_train_val": false
+      },
+      "causal_rl_no_instability": {
+        "blend_grid": [0.0, 0.25, 0.5, 0.75, 1.0],
+        "instability_grid": [0.0],
+        "persistence_grid": [0.0, 0.05, 0.1, 0.15],
+        "validation_cum_weight": 0.15,
+        "validation_turnover_weight": 0.1,
+        "validation_worst_regime_weight": 0.15,
+        "regime_sample_floor": 0.2,
+        "refit_on_train_val": false
+      },
+      "causal_rl_legacy": {
+        "robustness_lambda": 0.8,
+        "min_regime_bonus": 0.5,
+        "counterfactual_weight": 0.5
+      }
+    }
+  },
+  "real": {
+    "seeds": [7, 11, 13, 17, 19],
+    "top_k": 10,
+    "max_weight": 0.2,
+    "transaction_cost": 0.0015,
+    "min_available": 120,
+    "train_months": 180,
+    "val_months": 60,
+    "test_months": 60,
+    "step_months": 60,
+    "method_overrides": {
+      "causal_rl": {
+        "blend_grid": [0.0, 0.25, 0.5, 0.75, 1.0],
+        "instability_grid": [0.0, 0.1, 0.2, 0.3, 0.4],
+        "persistence_grid": [0.0, 0.05, 0.1, 0.15],
+        "validation_cum_weight": 0.25,
+        "validation_turnover_weight": 0.08,
+        "validation_worst_regime_weight": 0.08,
+        "regime_sample_floor": 0.2,
+        "refit_on_train_val": false
+      },
+      "causal_rl_no_instability": {
+        "blend_grid": [0.0, 0.25, 0.5, 0.75, 1.0],
+        "instability_grid": [0.0],
+        "persistence_grid": [0.0, 0.05, 0.1, 0.15],
+        "validation_cum_weight": 0.25,
+        "validation_turnover_weight": 0.08,
+        "validation_worst_regime_weight": 0.08,
+        "regime_sample_floor": 0.2,
+        "refit_on_train_val": false
+      },
+      "causal_rl_legacy": {
+        "robustness_lambda": 0.4,
+        "min_regime_bonus": 0.2,
+        "counterfactual_weight": 0.25
+      }
+    }
+  }
+}

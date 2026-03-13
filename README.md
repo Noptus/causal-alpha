@@ -43,11 +43,12 @@ Full paper bundle:
 - generated figures: `figures/generated/`
 - tables: `paper/generated_synthetic_summary.csv`, `paper/generated_synthetic_discovery.csv`, `paper/generated_real_summary.csv`
 - paper-style writeup: `paper/results.md`
+- experiment journal: `paper/experiment_journal.md`
 
 ## Current Findings
 
-- Synthetic SCM: causal RL nearly matches the oracle Sharpe, reaches `precision@5 = 1.0` for causal factor discovery, and materially outperforms the frozen correlation ranking baseline under regime shift.
-- Real factor library: the causal policy improves stress-regime Sharpe relative to the standard sequential policy learner, but the simple frozen correlation ranking baseline remains strongest overall.
+- Synthetic SCM: `causal_rl` reaches `precision@5 = 1.0`, posts `Sharpe = 2.083`, and beats the oracle on worst-regime Sharpe while the frozen correlation ranking baseline collapses under regime shift.
+- Real factor library: `causal_rl` now edges the contextual bandit on both cumulative return (`1.585` vs `1.577`) and Sharpe (`1.276` vs `1.271`) with materially lower turnover (`0.597` vs `0.796`), while the frozen correlation ranking baseline remains the highest-Sharpe reference overall.
 
 ## Data Sources
 

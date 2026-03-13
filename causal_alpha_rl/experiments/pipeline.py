@@ -17,7 +17,7 @@ from causal_alpha_rl.evaluation.plots import (
 )
 from causal_alpha_rl.evaluation.runner import aggregate_fold_outputs, build_sequence_dataset, run_fold
 from causal_alpha_rl.evaluation.splits import walk_forward_splits
-from causal_alpha_rl.paper.report import write_results_report
+from causal_alpha_rl.paper.report import write_experiment_journal, write_results_report
 from causal_alpha_rl.scm.synthetic import generate_synthetic_panel
 from causal_alpha_rl.utils.logging import RunContext
 from causal_alpha_rl.utils.paths import project_paths
@@ -47,6 +47,7 @@ def run_pipeline(config: dict[str, Any], run_context: RunContext, stage: str) ->
                     max_weight=config.get("max_weight", 0.2),
                     transaction_cost=config.get("transaction_cost", 0.001),
                     kind="synthetic",
+                    method_overrides=config.get("method_overrides"),
                 )
             )
         ]
@@ -115,6 +116,7 @@ def run_pipeline(config: dict[str, Any], run_context: RunContext, stage: str) ->
                         max_weight=config.get("max_weight", 0.2),
                         transaction_cost=config.get("transaction_cost", 0.0015),
                         kind="real",
+                        method_overrides=config.get("method_overrides"),
                     )
                 )
             )
@@ -148,12 +150,19 @@ def run_pipeline(config: dict[str, Any], run_context: RunContext, stage: str) ->
             notes=[
                 "Synthetic causal RL uses the correctly specified latent regime to test the SCM claim.",
                 "Real data uses inferred regimes from an HMM fitted on lagged macro and factor-dispersion proxies.",
+                "The main `causal_rl` method uses counterfactual-aware causal training on synthetic data and a bandit-guided selector on real data.",
                 "Raw downloads are cached outside git; generated tables and figures are committed.",
             ],
+        )
+        write_experiment_journal(
+            paths.paper / "experiment_journal.md",
+            synthetic_summary=synthetic_summary,
+            real_summary=real_summary,
         )
         outputs["synthetic"] = synthetic_outputs
         outputs["real"] = real_outputs
         outputs["report_path"] = str(paths.paper / "results.md")
+        outputs["journal_path"] = str(paths.paper / "experiment_journal.md")
         return outputs
 
     raise ValueError(f"Unsupported config kind: {config['kind']}")

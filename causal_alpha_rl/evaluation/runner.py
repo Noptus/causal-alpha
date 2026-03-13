@@ -14,7 +14,11 @@ from causal_alpha_rl.algorithms.baselines.contextual_bandit import ContextualBan
 from causal_alpha_rl.algorithms.baselines.correlation import RollingRankBaseline
 from causal_alpha_rl.algorithms.baselines.elastic_net import ElasticNetFactorSelector
 from causal_alpha_rl.algorithms.baselines.standard_policy import DirectPolicyNetwork
-from causal_alpha_rl.algorithms.causal_rl.policy import CausalPolicyNetwork, OracleRegimePolicy
+from causal_alpha_rl.algorithms.causal_rl.policy import (
+    CausalPolicyNetwork,
+    LegacyCausalPolicyNetwork,
+    OracleRegimePolicy,
+)
 from causal_alpha_rl.envs.allocation import evaluate_weight_path
 from causal_alpha_rl.evaluation.metrics import factor_discovery_metrics, summarize_backtest
 from causal_alpha_rl.scm.regime import causal_regime_posteriors, fit_regime_model
@@ -204,10 +208,12 @@ def run_fold(
     max_weight: float,
     transaction_cost: float,
     kind: str,
+    method_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     train_idx = np.arange(*split["train"])
     val_idx = np.arange(*split["val"])
     test_idx = np.arange(*split["test"])
+    method_overrides = method_overrides or {}
 
     if kind == "synthetic" and dataset.true_regime is not None:
         n_regimes = int(dataset.true_regime.max()) + 1
@@ -240,12 +246,43 @@ def run_fold(
 
     factor_eye = np.eye(len(dataset.factor_ids))
 
+    def _causal_overrides(method_name: str) -> dict[str, Any]:
+        overrides = dict(method_overrides.get(method_name, {}))
+        for grid_name in ["blend_grid", "instability_grid", "persistence_grid"]:
+            if grid_name in overrides:
+                overrides[grid_name] = tuple(float(value) for value in overrides[grid_name])
+        return overrides
+
     deterministic_methods = [
         RollingRankBaseline(top_k=top_k, max_weight=max_weight, transaction_cost=transaction_cost),
         ElasticNetFactorSelector(top_k=top_k, max_weight=max_weight, random_state=seeds[0], factor_eye=factor_eye, transaction_cost=transaction_cost),
         ContextualBanditBaseline(top_k=top_k, max_weight=max_weight, factor_eye=factor_eye, transaction_cost=transaction_cost),
     ]
-    seed_methods = [DirectPolicyNetwork, CausalPolicyNetwork]
+    causal_methods = []
+    primary_causal_kwargs = {"name": "causal_rl"}
+    primary_causal_kwargs.update(_causal_overrides("causal_rl"))
+    causal_methods.append(
+        CausalPolicyNetwork(
+            top_k=top_k,
+            max_weight=max_weight,
+            transaction_cost=transaction_cost,
+            random_state=seeds[0],
+            factor_eye=factor_eye,
+            **primary_causal_kwargs,
+        )
+    )
+    no_instability_kwargs = {"name": "causal_rl_no_instability", "instability_grid": (0.0,), "compare_legacy": False}
+    no_instability_kwargs.update(_causal_overrides("causal_rl_no_instability"))
+    causal_methods.append(
+        CausalPolicyNetwork(
+            top_k=top_k,
+            max_weight=max_weight,
+            transaction_cost=transaction_cost,
+            random_state=seeds[0],
+            factor_eye=factor_eye,
+            **no_instability_kwargs,
+        )
+    )
     results: list[dict[str, Any]] = []
 
     for method in deterministic_methods:
@@ -272,6 +309,7 @@ def run_fold(
                 "metrics": metrics,
                 "weights": weights,
                 "returns": returns,
+                "fit_summary": getattr(method, "fit_summary_", {}),
             }
         )
 
@@ -297,15 +335,25 @@ def run_fold(
             regime_labels_full=regime_labels,
             stress_mask_full=stress_mask_full,
         )
-        results.append({"method": standard.name, "seed": seed, "metrics": metrics, "weights": weights, "returns": returns})
+        results.append(
+            {
+                "method": standard.name,
+                "seed": seed,
+                "metrics": metrics,
+                "weights": weights,
+                "returns": returns,
+                "fit_summary": getattr(standard, "fit_summary_", {}),
+            }
+        )
 
-        causal = CausalPolicyNetwork(
+        legacy_causal = LegacyCausalPolicyNetwork(
             top_k=top_k,
             max_weight=max_weight,
             transaction_cost=transaction_cost,
             random_state=seed,
+            **_causal_overrides("causal_rl_legacy"),
         )
-        causal.fit(
+        legacy_causal.fit(
             train_features=dataset.features[train_idx],
             train_returns=dataset.future_returns[train_idx],
             train_available=dataset.available[train_idx],
@@ -322,12 +370,55 @@ def run_fold(
         metrics, weights, returns = _run_policy(
             dataset,
             test_idx,
-            causal,
+            legacy_causal,
             regime_posteriors=regime_posteriors,
             regime_labels_full=regime_labels,
             stress_mask_full=stress_mask_full,
         )
-        results.append({"method": causal.name, "seed": seed, "metrics": metrics, "weights": weights, "returns": returns})
+        results.append(
+            {
+                "method": legacy_causal.name,
+                "seed": seed,
+                "metrics": metrics,
+                "weights": weights,
+                "returns": returns,
+                "fit_summary": getattr(legacy_causal, "fit_summary_", {}),
+            }
+        )
+
+    for causal_method in causal_methods:
+        causal_method.fit(
+            train_features=dataset.features[train_idx],
+            train_returns=dataset.future_returns[train_idx],
+            train_available=dataset.available[train_idx],
+            val_features=dataset.features[val_idx],
+            val_returns=dataset.future_returns[val_idx],
+            val_available=dataset.available[val_idx],
+            train_regime_posteriors=regime_posteriors[train_idx],
+            val_regime_posteriors=regime_posteriors[val_idx],
+            train_regime_labels=regime_labels[train_idx],
+            val_regime_labels=regime_labels[val_idx],
+            train_counterfactual_returns=dataset.counterfactual_returns[train_idx] if dataset.counterfactual_returns is not None else None,
+            val_counterfactual_returns=dataset.counterfactual_returns[val_idx] if dataset.counterfactual_returns is not None else None,
+        )
+        metrics, weights, returns = _run_policy(
+            dataset,
+            test_idx,
+            causal_method,
+            regime_posteriors=regime_posteriors,
+            regime_labels_full=regime_labels,
+            stress_mask_full=stress_mask_full,
+        )
+        results.append(
+            {
+                "method": causal_method.name,
+                "seed": seeds[0],
+                "metrics": metrics,
+                "weights": weights,
+                "returns": returns,
+                "fit_summary": getattr(causal_method, "fit_summary_", {}),
+            }
+        )
 
     if kind == "synthetic" and dataset.counterfactual_returns is not None and dataset.true_regime is not None:
         oracle = OracleRegimePolicy(top_k=top_k, max_weight=max_weight, transaction_cost=transaction_cost)
@@ -347,6 +438,9 @@ def run_fold(
     return_series = pd.DataFrame(index=[dataset.dates[idx] for idx in test_idx])
     for record in results:
         summary = {"method": record["method"], "seed": record["seed"], **record["metrics"]}
+        for key, value in record.get("fit_summary", {}).items():
+            if isinstance(value, (int, float, np.integer, np.floating)):
+                summary[key] = float(value)
         summary_records.append(summary)
         importance = pd.Series(record["weights"].mean(axis=0), index=dataset.factor_ids, name=record["method"])
         importance_records.append(importance)
